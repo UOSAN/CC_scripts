@@ -37,15 +37,27 @@ def stop_trial_success_converter(s: bytes) -> int:
         return -1
 
 
-def tsv_data_read_for_rescorla_wagner(file: Path, is_go: bool = True) -> List[Tuple]:
+def go_no_go_trial_converter(s: bytes) -> int:
+    """
+    Converter to translate :param s: containing a trial type into 1 or 0.
+    :param s: Trial type. Trial type containing 'correct-go' or 'failed-go' indicates 'ngo' trials.
+    Trial type containing 'correct-stop' or 'failed-stop' indicates 'no-go' trials.
+    :return: 1 for go trials, 0 for no-go trials
+    """
+    if s.endswith(b'-go'):
+        return 1
+    elif s.endswith(b'-stop'):
+        return 0
+    else:
+        return -1
+
+
+def tsv_data_read_for_rescorla_wagner(file: Path) -> List[Tuple]:
     """
     Read behavioral data out of events.tsv files.
     Return a list of tuples of (duration, go trial success or failure)
     """
-    if is_go:
-        converters = {2: go_trial_success_converter}
-    else:
-        converters = {2: stop_trial_success_converter}
+    converters = {2: go_trial_success_converter}
 
     _, duration, trial_type = np.loadtxt(str(file),
                                          delimiter='\t',
@@ -56,6 +68,31 @@ def tsv_data_read_for_rescorla_wagner(file: Path, is_go: bool = True) -> List[Tu
     for d, g in zip(duration, trial_type):
         if g == 0 or g == 1:
             events.append((d, g))
+    return events
+
+
+def tsv_data_read_go_no_go(file: Path) -> List[Tuple]:
+    """
+    Read behavioral data out of events.tsv files.
+    Return a list of tuples of (duration, go trial success or failure)
+    """
+    converters = {2: go_no_go_trial_converter}
+
+    _, duration, trial_type = np.loadtxt(str(file),
+                                         delimiter='\t',
+                                         skiprows=1,
+                                         converters=converters,
+                                         unpack=True)
+    events = []
+    # Set the event value to one if the trial is a go-trial type following a no-go-trial type,
+    # and set the event value to zero if the trial is a go-trial type following a go-trial type
+    for i, (d, g) in enumerate(zip(duration, trial_type)):
+        event_value = g
+        if i == 0:
+            event_value = 0
+        elif trial_type[i] == 1 and trial_type[i-1] == 0:
+            event_value = 1
+        events.append((d, event_value))
     return events
 
 
@@ -78,7 +115,7 @@ def main(input_dir: str):
     for f in files:
         events = tsv_data_read_for_rescorla_wagner(f)
         write_for_rescorla_wagner(f, events)
-        events = tsv_data_read_for_rescorla_wagner(f, is_go=False)
+        events = tsv_data_read_go_no_go(f)
         write_for_rescorla_wagner(f, events, is_go=False)
 
 
