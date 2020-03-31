@@ -13,13 +13,26 @@ if (length(args)!=2) {
 library(mcplR)
 library(tidyverse)
 
+# Create learning models for go-trials only
 filenames = dir(input_dir, pattern="sub.*_go.*tsv", full.names = TRUE)
 for (i in 1:length(filenames)) {
   filename = filenames[i]
-  blah = read.table(filename, sep="\t", header = FALSE)
+  df = read.table(filename, sep="\t", header = FALSE)
 
-  learning_model = RescorlaWagner(V1~V2, data=blah)
+  learning_model = RescorlaWagner(V1~V2, data=df)
 
+  f_learning_model = fit(learning_model)
+  cat(filename, "\t", f_learning_model@parStruct@parameters["alpha"], "\n")
+}
+
+# Create learning models for go-trials following a stop trial
+filenames = dir(input_dir, pattern="sub.*_stop.*tsv", full.names = TRUE)
+for (i in 1:length(filenames)) {
+  filename = filenames[i]
+  df = read.table(filename, sep="\t", header = FALSE)
+  
+  learning_model = RescorlaWagner(V1~V2, data=df)
+  
   f_learning_model = fit(learning_model)
   cat(filename, "\t", f_learning_model@parStruct@parameters["alpha"], "\n")
 }
