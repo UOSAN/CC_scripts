@@ -7,18 +7,6 @@ STUDY_ID = 'CC'
 wave = '1'
 
 
-def trial_type_converter(s: bytes) -> int:
-    """
-    Converter to translate :param s: containing a trial type into 1 or 0.
-    :param s: Trial type. Trial type containing '-go' indicates 'go' trials.
-    :return: 1 for go trials, 0 else
-    """
-    if s.endswith(b'-go'):
-        return 1
-    else:
-        return 0
-
-
 def go_trial_success_converter(s: bytes) -> int:
     """
     Converter to translate :param s: containing a trial type into 1 or 0.
@@ -47,19 +35,6 @@ def stop_trial_success_converter(s: bytes) -> int:
         return 0
     else:
         return -1
-
-
-def tsv_data_read(file: Path) -> List:
-    """
-    Read behavioral data out of events.tsv files.
-    """
-    start_time, duration, is_go_trial = np.loadtxt(str(file),
-                                                   delimiter='\t',
-                                                   skiprows=1,
-                                                   converters={2: trial_type_converter},
-                                                   unpack=True)
-    dur = [d for d, g in zip(duration, is_go_trial) if g == 1]
-    return dur
 
 
 def tsv_data_read_for_rescorla_wagner(file: Path, is_go: bool = True) -> List[Tuple]:
