@@ -1,4 +1,6 @@
 #!/usr/bin/env Rscript
+# Run from command line as:
+# $ Rscript rescorla_wagner.R --input /path/to/multiconds/files
 args = commandArgs(trailingOnly=TRUE)
 
 input_dir=""
