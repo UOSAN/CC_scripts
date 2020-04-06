@@ -120,7 +120,7 @@ def main(input_dir: str):
 
 
 if __name__ == "__main__":
-    description = f'Plot multi-condition files for SST task in {STUDY_ID} study'
+    description = f'Create multi-condition files for modeling SST task in {STUDY_ID} study using a Rescorla-Wagner learning model'
 
     parser = argparse.ArgumentParser(description=description,
                                      add_help=True,
