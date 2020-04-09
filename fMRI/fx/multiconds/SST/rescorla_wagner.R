@@ -19,10 +19,17 @@ library(tidyverse)
 filenames = dir(input_dir, pattern="sub.*_go.*tsv", full.names = TRUE)
 for (i in 1:length(filenames)) {
   filename = filenames[i]
+  # Read the data from each file
   df = read.table(filename, sep="\t", header = FALSE)
 
+  # Get the subject ID from the filename
+  match = regexpr("CC[[:digit:]]{3}", filename)
+  subject_id = substr(filename, match, match + attr(match, "match.length") - 1)
+
+  # Create learning model
   learning_model = RescorlaWagner(V1~V2, data=df)
 
+  # Create predictions and plot them
   predictions_df = as.data.frame(predict(learning_model))
   ggplot(predictions_df) +
     geom_point(mapping=aes(x=as.numeric(rownames(predictions_df)), y=V1, shape="Predicted")) +
@@ -33,7 +40,7 @@ for (i in 1:length(filenames)) {
     scale_color_manual("", values=c("Measured"="black")) +
     scale_shape_manual("", values=c("Predicted"=1)) +
     theme(legend.position = "bottom")
-  plotname = sprintf('plot_CC%03d.png', i)
+  plotname = sprintf('plot_%s.png', subject_id)
   ggsave(plotname, width = 5, height = 5)
 
   f_learning_model = fit(learning_model)
