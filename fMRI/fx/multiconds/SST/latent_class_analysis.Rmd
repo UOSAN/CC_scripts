@@ -1,0 +1,67 @@
+---
+title: "Latent class analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# load libraries
+library(mclust)
+library(dplyr)
+# input_dir is the location of the BIDS-formatted events files
+input_dir=""
+```
+
+This notebook is investigating latent class analysis models (or latent profile models) for the SST task based on healthy and unhealthy foods, following [Will Hipson](https://willhipson.netlify.com/post/latent-profile/latent-profile/). The dataset includes the number of failures on "go" trials, the mean response time on correct trials, and the standard deviation of the response time on correct trials.
+
+Plot Bayesian Information Criteria for all the models with profiles ranging from 1 to 9.
+```{r BIC_plot}
+filenames = dir(input_dir, pattern="latent_class_analysis.tsv", full.names = TRUE)
+
+dataset = read.table(filenames[1], sep="\t", header = TRUE)
+dataset = dplyr::select(dataset, failed_go, mean_rt, std_dev_rt)
+
+BIC = mclustBIC(dataset)
+plot(BIC)
+```
+
+summary(BIC) shows the top three models based on BIC, and can be used to discern the best models.
+```{r BIC_summary}
+summary(BIC)
+```
+
+The highest BIC comes from the model labeled VEI,4, although there are at least two others that are very similar (VVI,2 or EEI,4). This model indicates that there are 4 clusters in the data.
+
+If we want to look at this model more closely, we save it as an object and inspect it with summary().
+
+```{r model_summary}
+model_VEI4 = Mclust(dataset, modelNames = 'VEI', G = 4, x = BIC)
+summary(model_VEI4)
+```
+
+The output describes the geometric characteristics of the profiles and the number of cases classified into each of the three clusters.
+
+BIC is one of the best fit indices, but it’s always recommended to look for more evidence that the solution we’ve chosen is the correct one. We can also compare values of the Integrated Completed Likelikood (ICL) criterion. ICL isn’t much different from BIC, except that it adds a penalty on solutions with greater entropy or classification uncertainty.
+
+```{r ICL}
+
+ICL = mclustICL(dataset)
+plot(ICL)
+summary(ICL)
+```
+
+We see similar results. ICL suggests that model VEI,4 (or VVI,2) fits quite well. Finally, we’ll perform the Bootstrap Likelihood Ratio Test (BLRT) which compares model fit between k-1 and k cluster models. In other words, it looks to see if an increase in profiles increases fit.
+
+```{r bootstrap}
+mclustBootstrapLRT(dataset, modelName = 'VEI')
+```
+
+BLRT also suggests that a 4-profile solution is the best.
+
+Plotting the VEI,4 model shows the four clusters: one is a group that fails many trials, another is group with low RT and low variation in RT, the third has high rt and high variation, and the final group has low RT and high variation.
+
+```{r classification_plot}
+plot(model_VEI4, what = 'classification')
+```
+
