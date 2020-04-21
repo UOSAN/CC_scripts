@@ -15,7 +15,7 @@ get_subject_id = function(filename) {
 subject_id = get_subject_id(filenames[1])
 
 # Read file containing if subject is in treatment group or in control group
-control_df = read.table(group_file, sep = '\t', header = TRUE, stringsAsFactors = FALSE)
+control_df = read.table(group_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 group = control_df$is_treatment[control_df$subject_id == subject_id]
 
 # Read file, select only the duration and trial_type columns, ignoring the onset column,
