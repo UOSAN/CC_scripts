@@ -72,6 +72,25 @@ def create_trials(trial_number: np.ndarray, trial_start_time: np.ndarray, trial_
     return trials
 
 
+def create_first_last_trials(trial_start_time: np.ndarray, trial_duration: np.ndarray, first: int, last: int):
+    # Output names (trial number or condition name (GoFail, GoSuccess, NoGoFail, NoGoSuccess)),
+    # onsets (when the thing started),
+    # durations (how long the thing lasted)
+    names_list = [f'First{first}Events', f'Last{last}Events']
+    names = np.asarray(names_list, dtype=np.object)
+    onsets = np.zeros((len(names_list),), dtype=np.object)
+    durations = np.zeros((len(names_list),), dtype=np.object)
+    onsets[0] = trial_start_time[:first].reshape(first, 1)
+    onsets[1] = trial_start_time[-last:].reshape(last, 1)
+    durations[0] = trial_duration[:first].reshape(first, 1)
+    durations[1] = trial_duration[-last:].reshape(last, 1)
+
+    trials = {'names': names,
+              'onsets': onsets,
+              'durations': durations}
+    return trials
+
+
 def create_conditions(start_time: np.ndarray, duration: np.ndarray, masks: List):
     names = np.asarray(['CorrectGo', 'CorrectStop', 'FailedStop', 'Cue', 'FailedGo'], dtype=np.object)
     onsets = np.zeros((len(masks),), dtype=np.object)
@@ -88,6 +107,40 @@ def create_conditions(start_time: np.ndarray, duration: np.ndarray, masks: List)
     return conditions
 
 
+def create_go_no_gomasks(condition: np.ndarray) -> List:
+    """Create masks of conditions"""
+    go = condition == GO_TRIAL
+    no_go = condition == NO_GO_TRIAL
+
+    return list((go, no_go))
+
+
+def moving_average(a, window=5):
+    ret = np.cumsum(a, dtype=float)
+    ret[window:] = ret[window:] - ret[:-window]
+    return ret[window - 1:] / window
+
+
+def create_moving_average_conditions(start_time: np.ndarray, duration: np.ndarray, masks: List):
+    names = np.asarray(['go', 'nogo'], dtype=np.object)
+    onsets = np.zeros((len(masks),), dtype=np.object)
+    durations = np.zeros((len(masks),), dtype=np.object)
+    # onsets and durations have to be reshaped from 1-d np arrays to Nx1 arrays so when written
+    # by scipy.io.savemat, the correct cell array is created in matlab
+    window = 5
+    lead = (window - 1) // 2
+    trail = (window - 1) // 2
+    for i, mask in enumerate(masks):
+        onsets[i] = start_time[mask][trail:-lead].reshape(np.count_nonzero(mask) - lead - trail, 1)
+        averaged_durations = moving_average(duration[mask], window=window)
+        durations[i] = averaged_durations.reshape(np.count_nonzero(mask) - lead - trail, 1)
+
+    conditions = {'names': names,
+                  'onsets': onsets,
+                  'durations': durations}
+    return conditions
+
+
 def write_betaseries(input_dir: Union[PathLike, str], subject_id: str, wave: str, trials):
     path = Path(input_dir) / 'betaseries'
     path.mkdir(parents=True, exist_ok=True)
@@ -96,10 +149,9 @@ def write_betaseries(input_dir: Union[PathLike, str], subject_id: str, wave: str
     scipy.io.savemat(str(path / file_name), trials)
 
 
-def write_conditions(input_dir: Union[PathLike, str], subject_id: str, wave: str, trials):
+def write_conditions(input_dir: Union[PathLike, str], file_name: str, trials):
     path = Path(input_dir) / 'conditions'
     path.mkdir(parents=True, exist_ok=True)
-    file_name = f'{STUDY_ID}{subject_id}_{wave}_SST1.mat'
 
     scipy.io.savemat(str(path / file_name), trials)
 
@@ -199,8 +251,20 @@ def main(input_dir: str, bids_dir: str = None):
                 # Create paths and file names
                 write_betaseries(input_dir, subject_id, wave_number, trials)
 
+                trials = create_first_last_trials(trial_start_time, trial_duration, 10, 10)
+                file_name = f'{STUDY_ID}{subject_id}_blocks.mat'
+                write_conditions(input_dir, file_name, trials)
+
                 conditions = create_conditions(trial_start_time, trial_duration, masks)
-                write_conditions(input_dir, subject_id, wave_number, conditions)
+                file_name = f'{STUDY_ID}{subject_id}_{wave_number}_SST1.mat'
+                write_conditions(input_dir, file_name, conditions)
+
+                # Create masks for the various conditions
+                masks = create_go_no_gomasks(is_go_trial)
+
+                conditions = create_moving_average_conditions(trial_start_time, trial_duration, masks)
+                file_name = f'{STUDY_ID}{subject_id}_moving_average.mat'
+                write_conditions(input_dir, file_name, conditions)
 
                 write_text_events(input_dir, subject_id, wave_number,
                                   np.stack((trial_start_time, trial_duration, trial_type), axis=1))
