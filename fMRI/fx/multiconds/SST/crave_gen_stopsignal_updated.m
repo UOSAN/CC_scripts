@@ -184,8 +184,8 @@ for s = 1:length(ssids)
 
     
     %% Output with first and last 10 events
-    onsets(:,3) = [];
-    durations(:,3) = [];
+    onsets = {};
+    durations = {};
     names = {'First10Events', 'Last10Events'};
     onsets{1,1} = ons(1:10);
     onsets{1,2} = ons(end-9:end);
@@ -196,6 +196,8 @@ for s = 1:length(ssids)
     save([savedir sprintf('/CC%03d_blocks.mat',ssids(s))],'names','onsets','durations');
     
     %% Output with a moving window of 5 events
+    onsets = {};
+    durations = {};
     window = 5;
     go_onsets = ons(isgo);
     go_durations = durs(isgo);
@@ -209,9 +211,9 @@ for s = 1:length(ssids)
     no_go_durations = durs(~isgo);
     no_go_len = length(no_go_onsets) - window;
     for i=1:no_go_len
-        names{1,i+length(go_onsets)} = sprintf('nogo%d', i);
-        onsets{1,i+length(go_onsets)} = no_go_onsets(i:i+window);
-        durations{1,i+length(go_onsets)} = no_go_durations(i:i+window);
+        names{1,i+go_len} = sprintf('nogo%d', i);
+        onsets{1,i+go_len} = no_go_onsets(i:i+window);
+        durations{1,i+go_len} = no_go_durations(i:i+window);
     end
     
     save([savedir sprintf('/CC%03d_moving_average.mat',ssids(s))],'names','onsets','durations');
