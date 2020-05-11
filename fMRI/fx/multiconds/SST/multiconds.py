@@ -122,18 +122,23 @@ def moving_average(a, window=5):
 
 
 def create_moving_average_conditions(start_time: np.ndarray, duration: np.ndarray, masks: List):
-    names = np.asarray(['go', 'nogo'], dtype=np.object)
-    onsets = np.zeros((len(masks),), dtype=np.object)
-    durations = np.zeros((len(masks),), dtype=np.object)
+    window = 5
+    go_len = len(start_time[masks[0]]) - window + 1
+    no_go_len = len(start_time[masks[1]]) - window + 1
+    names_list = [f'go{i}' for i in range(1, go_len + 1)] + [f'nogo{i}' for i in range(1, no_go_len + 1)]
+
+    names = np.asarray(names_list, dtype=np.object)
+    onsets = np.zeros((len(names_list),), dtype=np.object)
+    durations = np.zeros((len(names_list),), dtype=np.object)
     # onsets and durations have to be reshaped from 1-d np arrays to Nx1 arrays so when written
     # by scipy.io.savemat, the correct cell array is created in matlab
-    window = 5
-    lead = (window - 1) // 2
-    trail = (window - 1) // 2
-    for i, mask in enumerate(masks):
-        onsets[i] = start_time[mask][trail:-lead].reshape(np.count_nonzero(mask) - lead - trail, 1)
-        averaged_durations = moving_average(duration[mask], window=window)
-        durations[i] = averaged_durations.reshape(np.count_nonzero(mask) - lead - trail, 1)
+
+    for j in range(go_len):
+        onsets[j] = start_time[masks[0]][j:j+window].reshape(window, 1)
+        durations[j] = duration[masks[0]][j:j+window].reshape(window, 1)
+    for i in range(no_go_len):
+        onsets[i + go_len] = start_time[masks[1]][i:i+window].reshape(window, 1)
+        durations[i + go_len] = duration[masks[1]][i:i+window].reshape(window, 1)
 
     conditions = {'names': names,
                   'onsets': onsets,
